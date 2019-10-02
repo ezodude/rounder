@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -89,7 +90,7 @@ func (i *Ingestion) SubjectRepo() string {
 // Do runs an Ingestion storing ingested data at the configured path
 func (i *Ingestion) Do() (*Result, error) {
 	target := strings.Replace(i.providerURL, "_KEY_", i.key, 1)
-	target = strings.Replace(target, "_SUBJECT_", i.subject, 1)
+	target = strings.Replace(target, "_SUBJECT_", url.PathEscape(i.subject), 1)
 
 	req, err := http.NewRequest("GET", target, nil)
 	if err != nil {
@@ -98,21 +99,20 @@ func (i *Ingestion) Do() (*Result, error) {
 
 	resp, err := i.httpClient.Do(req)
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	resData, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
 
 	res := struct {
 		Status   string                   `json:"status"`
 		Total    string                   `json:"totalResults"`
 		Articles []map[string]interface{} `json:"articles"`
 	}{}
-
-	resData, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
 
 	if err := json.Unmarshal(resData, &res); err != nil {
 		return nil, err
