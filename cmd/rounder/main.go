@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	storage = "./../../repo"
+	storage = "./repo"
 )
 
 // App struct inits and runs the application
