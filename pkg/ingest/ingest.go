@@ -22,7 +22,7 @@ type Ingestion struct {
 	key         string
 	subject     string
 	path        string
-	providerURL string
+	dataEndpoint string
 	httpClient  *http.Client
 }
 
@@ -60,13 +60,13 @@ func (i *Ingestion) Path(p string) *Ingestion {
 	return i
 }
 
-// ProviderURL configures the Ingestion data provider including placeholders for key + subject
+// DataEndpoint configures the Ingestion data provider including placeholders for key + subject
 // For now it assumes,
 // - To be called using a GET request
 // - The [_KEY_] and [_SUBJECT_] placeholders will be replaced with the configured key and subject
 // For e.g https://provider.com/endpoint?key=_KEY_&query=_SUBJECT_
-func (i *Ingestion) ProviderURL(url string) *Ingestion {
-	i.providerURL = url
+func (i *Ingestion) DataEndpoint(url string) *Ingestion {
+	i.dataEndpoint = url
 	return i
 }
 
@@ -89,7 +89,7 @@ func (i *Ingestion) SubjectRepo() string {
 
 // Do runs an Ingestion storing ingested data at the configured path
 func (i *Ingestion) Do() (*Result, error) {
-	target := strings.Replace(i.providerURL, "_KEY_", i.key, 1)
+	target := strings.Replace(i.dataEndpoint, "_KEY_", i.key, 1)
 	target = strings.Replace(target, "_SUBJECT_", url.PathEscape(i.subject), 1)
 
 	req, err := http.NewRequest("GET", target, nil)

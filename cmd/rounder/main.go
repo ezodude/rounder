@@ -26,7 +26,7 @@ type App struct {
 	HTTPClient  *http.Client
 	IngestDir   string
 	ProviderKey string
-	ProviderURL string
+	DataEndpoint string
 }
 
 type ingestPayload struct {
@@ -90,7 +90,7 @@ func (a *App) ingestHandler(w http.ResponseWriter, r *http.Request) {
 		Key(a.ProviderKey).
 		Subject(payload.Subject).
 		Path(a.IngestDir).
-		ProviderURL(a.ProviderURL).
+		DataEndpoint(a.DataEndpoint).
 		Do()
 
 	if err != nil {
@@ -158,9 +158,9 @@ func main() {
 		panic(fmt.Errorf("Data collection PROVIDER_KEY ENV is missing"))
 	}
 
-	providerURL, found := os.LookupEnv("PROVIDER_URL")
+	dataEndpoint, found := os.LookupEnv("DATA_ENDPOINT")
 	if !found {
-		panic(fmt.Errorf("Data collection PROVIDER_URL ENV is missing"))
+		panic(fmt.Errorf("Data collection DATA_ENDPOINT ENV is missing"))
 	}
 
 	port, found := os.LookupEnv("ROUNDER_API_PORT")
@@ -170,7 +170,7 @@ func main() {
 
 	a := App{}
 	a.ProviderKey = providerKey
-	a.ProviderURL = providerURL
+	a.DataEndpoint = dataEndpoint
 	a.Initialize()
 	a.Run(port)
 }

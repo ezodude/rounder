@@ -49,7 +49,7 @@ func TestIngestionResult(t *testing.T) {
 	okJson := "testdata/ingestion-raw-success.json"
 	key := "api-key"
 	subject := "off-payroll"
-	providerURL := "http://www.provider.com/api/v1/search?key=_KEY_&query=_SUBJECT_%20AND%20sourceCountry:%22United%20Kingdom%22&limit=100&format=json"
+	dataEndpoint := "http://www.provider.com/api/v1/search?key=_KEY_&query=_SUBJECT_%20AND%20sourceCountry:%22United%20Kingdom%22&limit=100&format=json"
 	expectedUrl := "http://www.provider.com/api/v1/search?key=api-key&query=off-payroll%20AND%20sourceCountry:%22United%20Kingdom%22&limit=100&format=json"
 	expectedResult := `ingestion_off_payroll::off-payroll::true::1`
 
@@ -85,7 +85,7 @@ func TestIngestionResult(t *testing.T) {
 		Key(key).
 		Subject(subject).
 		Path(path).
-		ProviderURL(providerURL).
+		DataEndpoint(dataEndpoint).
 		Do()
 
 	if err != nil {
@@ -102,7 +102,7 @@ func TestIngestionStoresArticles(t *testing.T) {
 	okArticles := "testdata/ingestion-success.json"
 	key := "api-key"
 	subject := "off-payroll"
-	providerURL := "http://www.provider.com/api/v1/search?key=_KEY_&query=_SUBJECT_%20AND%20sourceCountry:%22United%20Kingdom%22&limit=100&format=json"
+	dataEndpoint := "http://www.provider.com/api/v1/search?key=_KEY_&query=_SUBJECT_%20AND%20sourceCountry:%22United%20Kingdom%22&limit=100&format=json"
 	expectedUrl := "http://www.provider.com/api/v1/search?key=api-key&query=off-payroll%20AND%20sourceCountry:%22United%20Kingdom%22&limit=100&format=json"
 
 	okResponse, err := ioutil.ReadFile(okRaw)
@@ -137,7 +137,7 @@ func TestIngestionStoresArticles(t *testing.T) {
 		Key(key).
 		Subject(subject).
 		Path(path).
-		ProviderURL(providerURL).
+		DataEndpoint(dataEndpoint).
 		Do()
 
 	if err != nil {

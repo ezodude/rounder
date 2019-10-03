@@ -78,7 +78,7 @@ func TestHandlesIngestSubject(t *testing.T) {
 	app.HTTPClient = client
 	app.IngestDir = tempStorage
 	app.ProviderKey = "a-key"
-	app.ProviderURL = "http://www.provider.com/api/v1/search?key=_KEY_&query=_SUBJECT_%20AND%20sourceCountry:%22United%20Kingdom%22&limit=100&format=json"
+	app.DataEndpoint = "http://www.provider.com/api/v1/search?key=_KEY_&query=_SUBJECT_%20AND%20sourceCountry:%22United%20Kingdom%22&limit=100&format=json"
 
 	expected := `{"ID":"ingestion_off_payrol_working","subject":"off-payrol working","ingested":true,"total":1}`
 	rr := ServeFakeHTTP(
