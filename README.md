@@ -16,7 +16,9 @@ The following `ENVs` are required to make this happen:
 - `DATA_ENDPOINT` - a url pointing to actual `JSON` data. Should include `_KEY_` & `_SUBJECT_` placeholders.
 - `PROVIDER_KEY` - if available, an API Key supplied by the data provider.
 
-Example `DATA_ENDPOINT` with placeholders: `http://acmeprovider.com/api/v1/search?key=_KEY_&query=_SUBJECT_%20AND%20sourceCountry:%22United%20Kingdom%22&limit=100&format=json`
+For e.g.,
+
+`DATA_ENDPOINT` with placeholders: `http://acmeprovider.com/api/v1/search?key=_KEY_&query=_SUBJECT_%20AND%20sourceCountry:%22United%20Kingdom%22&limit=100&format=json`
 
 ### Digest enpoints 🔜
 
