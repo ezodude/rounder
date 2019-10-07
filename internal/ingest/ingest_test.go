@@ -18,6 +18,86 @@ import (
 	"github.com/ezodude/rounder/internal/ingest"
 )
 
+var okRaw = "testdata/ingestion-raw-success.json"
+var key = "api-key"
+var subject = "off-payroll"
+var dataEndpoint = `http://www.provider.com/api/v1/search?key=_KEY_&query=_SUBJECT_%20AND%20sourceCountry:%22United%20Kingdom%22&limit=100&format=json`
+var expectedUrl = `http://www.provider.com/api/v1/search?key=api-key&query=off-payroll%20AND%20sourceCountry:%22United%20Kingdom%22&limit=100&format=json`
+
+func TestIngestionResult(t *testing.T) {
+	expectedResult := `ingestion_off_payroll::off-payroll::true::1`
+
+	httpClient, srvrteardown := newClientWithServerChecks(t, okRaw, "GET", expectedUrl)
+	defer srvrteardown()
+
+	dir, remove := mustCreateTempDir(t, "", "rounder-ingest")
+	defer remove()
+
+	actual, err := ingest.New().
+		HTTPClient(httpClient).
+		Key(key).
+		Subject(subject).
+		Path(dir).
+		DataEndpoint(dataEndpoint).
+		Do()
+
+	if err != nil {
+		t.Fatalf("Did not expect error [%s]", err)
+	}
+
+	if actual.String() != expectedResult {
+		t.Fatalf("Expected ingest result to equal [%s] but got [%s]", expectedResult, actual)
+	}
+}
+
+func TestIngestionStoresArticles(t *testing.T) {
+	expectedArticles := "testdata/ingestion-success.json"
+
+	httpClient, srvrteardown := newClientWithServerChecks(t, okRaw, "GET", expectedUrl)
+	defer srvrteardown()
+
+	dir, remove := mustCreateTempDir(t, "", "rounder-ingest")
+	defer remove()
+
+	data, err := ingest.New().
+		HTTPClient(httpClient).
+		Key(key).
+		Subject(subject).
+		Path(dir).
+		DataEndpoint(dataEndpoint).
+		Do()
+
+	if err != nil {
+		t.Fatalf("Did not expect error [%s]", err)
+	}
+
+	actualFilename := fmt.Sprintf(`%s.json`, filepath.Join(dir, data.ID))
+	assertFiles(t, expectedArticles, actualFilename)
+}
+
+func newClientWithServerChecks(tb testing.TB, fname, method, url string, v ...interface{}) (*http.Client, func()) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write(mustReadFile(tb, fname))
+
+		if r.Method != method {
+			msg := fmt.Sprintf("Expected [%s] request but got [%s]", method, r.Method)
+
+			_, file, line, _ := runtime.Caller(1)
+			tb.Fatalf("\033[31m%s:%d: "+msg+"\033[39m\n\n", append([]interface{}{filepath.Base(file), line}, v...)...)
+		}
+
+		reqURL := fmt.Sprintf("http://%s%s", r.Host, r.RequestURI)
+		if reqURL != url {
+			msg := fmt.Sprintf("Expected request URL equals [%s] but got [%s]", url, reqURL)
+
+			_, file, line, _ := runtime.Caller(1)
+			tb.Fatalf("\033[31m%s:%d: "+msg+"\033[39m\n\n", append([]interface{}{filepath.Base(file), line}, v...)...)
+		}
+	})
+
+	return newTestingHTTPClient(handler)
+}
+
 func newTestingHTTPClient(handler http.Handler) (*http.Client, func()) {
 	s := httptest.NewServer(handler)
 	client := &http.Client{
@@ -30,7 +110,26 @@ func newTestingHTTPClient(handler http.Handler) (*http.Client, func()) {
 	return client, s.Close
 }
 
-func assertBytesEqual(tb testing.TB, expected []byte, actual []byte, msg string, v ...interface{}) {
+func mustCreateTempDir(tb testing.TB, dir, prefix string, v ...interface{}) (string, func()) {
+	result, err := ioutil.TempDir("", "rounder-ingest")
+	if err != nil {
+		msg := fmt.Sprintf("Could not create a Temp dir at path[%s]", result)
+
+		_, file, line, _ := runtime.Caller(1)
+		tb.Fatalf("\033[31m%s:%d: "+msg+"\033[39m\n\n", append([]interface{}{filepath.Base(file), line}, v...)...)
+	}
+	return result, func() { os.RemoveAll(result) }
+}
+
+func assertFiles(tb testing.TB, expectedFile, actualFile string) {
+	eContent := mustReadFile(tb, expectedFile)
+	aContent := mustReadFile(tb, actualFile)
+
+	msg := fmt.Sprintf("Expected content equals [%s] \n but got [%s]\n", string(eContent), string(aContent))
+	assertBytes(tb, eContent, aContent, msg)
+}
+
+func assertBytes(tb testing.TB, expected []byte, actual []byte, msg string, v ...interface{}) {
 	e := strings.Split(string(expected), "")
 	a := strings.Split(string(actual), "")
 
@@ -45,118 +144,12 @@ func assertBytesEqual(tb testing.TB, expected []byte, actual []byte, msg string,
 	}
 }
 
-func TestIngestionResult(t *testing.T) {
-	okJson := "testdata/ingestion-raw-success.json"
-	key := "api-key"
-	subject := "off-payroll"
-	dataEndpoint := "http://www.provider.com/api/v1/search?key=_KEY_&query=_SUBJECT_%20AND%20sourceCountry:%22United%20Kingdom%22&limit=100&format=json"
-	expectedUrl := "http://www.provider.com/api/v1/search?key=api-key&query=off-payroll%20AND%20sourceCountry:%22United%20Kingdom%22&limit=100&format=json"
-	expectedResult := `ingestion_off_payroll::off-payroll::true::1`
-
-	okResponse, err := ioutil.ReadFile(okJson)
+func mustReadFile(tb testing.TB, filename string, v ...interface{}) []byte {
+	result, err := ioutil.ReadFile(filename)
 	if err != nil {
-		fmt.Printf("Cannot read testdata path[%s]\n", okJson)
-		t.FailNow()
+		_, file, line, _ := runtime.Caller(1)
+		msg := fmt.Sprintf("Cannot read filename[%s]\n", filename)
+		tb.Fatalf("\033[31m%s:%d: "+msg+"\033[39m\n\n", append([]interface{}{filepath.Base(file), line}, v...)...)
 	}
-
-	httpClient, teardown := newTestingHTTPClient(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(okResponse)
-
-		if r.Method != "GET" {
-			t.Fatalf("Expected a GET request but got [%s]", r.Method)
-		}
-
-		url := fmt.Sprintf("http://%s%s", r.Host, r.RequestURI)
-		if url != expectedUrl {
-			t.Fatalf("Expected request URL equals [%s] but got [%s]", expectedUrl, url)
-		}
-	}))
-	defer teardown()
-
-	path, err := ioutil.TempDir("", "rounder-ingest")
-	if err != nil {
-		fmt.Printf("Could not create a Temp dir at path[%s]\n", path)
-		t.FailNow()
-	}
-	defer os.RemoveAll(path)
-
-	actual, err := ingest.New().
-		HTTPClient(httpClient).
-		Key(key).
-		Subject(subject).
-		Path(path).
-		DataEndpoint(dataEndpoint).
-		Do()
-
-	if err != nil {
-		t.Fatalf("Did not expect error [%s]", err)
-	}
-
-	if actual.String() != expectedResult {
-		t.Fatalf("Expected ingest result to equal [%s] but got [%s]", expectedResult, actual)
-	}
-}
-
-func TestIngestionStoresArticles(t *testing.T) {
-	okRaw := "testdata/ingestion-raw-success.json"
-	okArticles := "testdata/ingestion-success.json"
-	key := "api-key"
-	subject := "off-payroll"
-	dataEndpoint := "http://www.provider.com/api/v1/search?key=_KEY_&query=_SUBJECT_%20AND%20sourceCountry:%22United%20Kingdom%22&limit=100&format=json"
-	expectedUrl := "http://www.provider.com/api/v1/search?key=api-key&query=off-payroll%20AND%20sourceCountry:%22United%20Kingdom%22&limit=100&format=json"
-
-	okResponse, err := ioutil.ReadFile(okRaw)
-	if err != nil {
-		fmt.Printf("Cannot read testdata path[%s]\n", okRaw)
-		t.FailNow()
-	}
-
-	httpClient, teardown := newTestingHTTPClient(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(okResponse)
-
-		if r.Method != "GET" {
-			t.Fatalf("Expected a GET request but got [%s]", r.Method)
-		}
-
-		url := fmt.Sprintf("http://%s%s", r.Host, r.RequestURI)
-		if url != expectedUrl {
-			t.Fatalf("Expected request URL equals [%s] but got [%s]", expectedUrl, url)
-		}
-	}))
-	defer teardown()
-
-	path, err := ioutil.TempDir("", "rounder-ingest")
-	if err != nil {
-		fmt.Printf("Could not create a Temp dir at path[%s]\n", path)
-		t.FailNow()
-	}
-	defer os.RemoveAll(path)
-
-	actual, err := ingest.New().
-		HTTPClient(httpClient).
-		Key(key).
-		Subject(subject).
-		Path(path).
-		DataEndpoint(dataEndpoint).
-		Do()
-
-	if err != nil {
-		t.Fatalf("Did not expect error [%s]", err)
-	}
-
-	expectedArticles, err := ioutil.ReadFile(okArticles)
-	if err != nil {
-		fmt.Printf("Cannot read testdata path[%s]\n", okArticles)
-		t.FailNow()
-	}
-
-	filename := fmt.Sprintf(`%s.json`, filepath.Join(path, actual.ID))
-	actualArticles, err := ioutil.ReadFile(filename)
-	if err != nil {
-		fmt.Printf("Expected missing ingested articles at temp path[%s]\n", filename)
-		t.FailNow()
-	}
-
-	msg := fmt.Sprintf("Expected ingested articles equals [%s] \n but got [%s]\n", string(expectedArticles), string(actualArticles))
-	assertBytesEqual(t, expectedArticles, actualArticles, msg)
+	return result
 }

@@ -62,9 +62,7 @@ func TestHandlesIngestSubject(t *testing.T) {
 		fmt.Printf("Cannot read testdata path[%s]\n", okJSON)
 		t.FailNow()
 	}
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(okResponse)
-	})
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write(okResponse) })
 	client, teardown := newTestingHTTPClient(handler)
 	defer teardown()
 
