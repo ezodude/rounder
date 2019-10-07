@@ -24,61 +24,11 @@ var subject = "off-payroll"
 var dataEndpoint = `http://www.provider.com/api/v1/search?key=_KEY_&query=_SUBJECT_%20AND%20sourceCountry:%22United%20Kingdom%22&limit=100&format=json`
 var expectedUrl = `http://www.provider.com/api/v1/search?key=api-key&query=off-payroll%20AND%20sourceCountry:%22United%20Kingdom%22&limit=100&format=json`
 
-func newTestingHTTPClient(handler http.Handler) (*http.Client, func()) {
-	s := httptest.NewServer(handler)
-	client := &http.Client{
-		Transport: &http.Transport{
-			DialContext: func(_ context.Context, network, _ string) (net.Conn, error) {
-				return net.Dial(network, s.Listener.Addr().String())
-			},
-		},
-	}
-	return client, s.Close
-}
-
-func assertFiles(tb testing.TB, expectedFile, actualFile string) {
-	eContent, err := ioutil.ReadFile(expectedFile)
-	if err != nil {
-		fmt.Printf("Cannot read expected data from file in path[%s]\n", expectedFile)
-		tb.FailNow()
-	}
-
-	aContent, err := ioutil.ReadFile(actualFile)
-	if err != nil {
-		fmt.Printf("Cannot read actual data from file in path[%s]\n", actualFile)
-		tb.FailNow()
-	}
-
-	msg := fmt.Sprintf("Expected content equals [%s] \n but got [%s]\n", string(eContent), string(aContent))
-	assertBytes(tb, eContent, aContent, msg)
-}
-
-func assertBytes(tb testing.TB, expected []byte, actual []byte, msg string, v ...interface{}) {
-	e := strings.Split(string(expected), "")
-	a := strings.Split(string(actual), "")
-
-	sort.Strings(e)
-	sort.Strings(a)
-
-	condition := reflect.DeepEqual(e, a)
-
-	if !condition {
-		_, file, line, _ := runtime.Caller(1)
-		tb.Fatalf("\033[31m%s:%d: "+msg+"\033[39m\n\n", append([]interface{}{filepath.Base(file), line}, v...)...)
-	}
-}
-
 func TestIngestionResult(t *testing.T) {
 	expectedResult := `ingestion_off_payroll::off-payroll::true::1`
 
-	okResponse, err := ioutil.ReadFile(okRaw)
-	if err != nil {
-		fmt.Printf("Cannot read testdata path[%s]\n", okRaw)
-		t.FailNow()
-	}
-
 	httpClient, teardown := newTestingHTTPClient(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(okResponse)
+		w.Write(mustReadFile(t, okRaw))
 
 		if r.Method != "GET" {
 			t.Fatalf("Expected a GET request but got [%s]", r.Method)
@@ -118,14 +68,8 @@ func TestIngestionResult(t *testing.T) {
 func TestIngestionStoresArticles(t *testing.T) {
 	expectedArticles := "testdata/ingestion-success.json"
 
-	okResponse, err := ioutil.ReadFile(okRaw)
-	if err != nil {
-		fmt.Printf("Cannot read testdata path[%s]\n", okRaw)
-		t.FailNow()
-	}
-
 	httpClient, teardown := newTestingHTTPClient(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(okResponse)
+		w.Write(mustReadFile(t, okRaw))
 
 		if r.Method != "GET" {
 			t.Fatalf("Expected a GET request but got [%s]", r.Method)
@@ -159,4 +103,49 @@ func TestIngestionStoresArticles(t *testing.T) {
 
 	actualFilename := fmt.Sprintf(`%s.json`, filepath.Join(path, data.ID))
 	assertFiles(t, expectedArticles, actualFilename)
+}
+
+func mustReadFile(tb testing.TB, filename string, v ...interface{}) []byte {
+	result, err := ioutil.ReadFile(filename)
+	if err != nil {
+		_, file, line, _ := runtime.Caller(1)
+		msg := fmt.Sprintf("Cannot read filename[%s]\n", filename)
+		tb.Fatalf("\033[31m%s:%d: "+msg+"\033[39m\n\n", append([]interface{}{filepath.Base(file), line}, v...)...)
+	}
+	return result
+}
+
+func newTestingHTTPClient(handler http.Handler) (*http.Client, func()) {
+	s := httptest.NewServer(handler)
+	client := &http.Client{
+		Transport: &http.Transport{
+			DialContext: func(_ context.Context, network, _ string) (net.Conn, error) {
+				return net.Dial(network, s.Listener.Addr().String())
+			},
+		},
+	}
+	return client, s.Close
+}
+
+func assertFiles(tb testing.TB, expectedFile, actualFile string) {
+	eContent := mustReadFile(tb, expectedFile)
+	aContent := mustReadFile(tb, actualFile)
+
+	msg := fmt.Sprintf("Expected content equals [%s] \n but got [%s]\n", string(eContent), string(aContent))
+	assertBytes(tb, eContent, aContent, msg)
+}
+
+func assertBytes(tb testing.TB, expected []byte, actual []byte, msg string, v ...interface{}) {
+	e := strings.Split(string(expected), "")
+	a := strings.Split(string(actual), "")
+
+	sort.Strings(e)
+	sort.Strings(a)
+
+	condition := reflect.DeepEqual(e, a)
+
+	if !condition {
+		_, file, line, _ := runtime.Caller(1)
+		tb.Fatalf("\033[31m%s:%d: "+msg+"\033[39m\n\n", append([]interface{}{filepath.Base(file), line}, v...)...)
+	}
 }
