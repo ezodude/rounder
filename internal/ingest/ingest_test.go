@@ -18,6 +18,12 @@ import (
 	"github.com/ezodude/rounder/internal/ingest"
 )
 
+var okRaw = "testdata/ingestion-raw-success.json"
+var key = "api-key"
+var subject = "off-payroll"
+var dataEndpoint = `http://www.provider.com/api/v1/search?key=_KEY_&query=_SUBJECT_%20AND%20sourceCountry:%22United%20Kingdom%22&limit=100&format=json`
+var expectedUrl = `http://www.provider.com/api/v1/search?key=api-key&query=off-payroll%20AND%20sourceCountry:%22United%20Kingdom%22&limit=100&format=json`
+
 func newTestingHTTPClient(handler http.Handler) (*http.Client, func()) {
 	s := httptest.NewServer(handler)
 	client := &http.Client{
@@ -63,16 +69,11 @@ func assertBytes(tb testing.TB, expected []byte, actual []byte, msg string, v ..
 }
 
 func TestIngestionResult(t *testing.T) {
-	okJson := "testdata/ingestion-raw-success.json"
-	key := "api-key"
-	subject := "off-payroll"
-	dataEndpoint := "http://www.provider.com/api/v1/search?key=_KEY_&query=_SUBJECT_%20AND%20sourceCountry:%22United%20Kingdom%22&limit=100&format=json"
-	expectedUrl := "http://www.provider.com/api/v1/search?key=api-key&query=off-payroll%20AND%20sourceCountry:%22United%20Kingdom%22&limit=100&format=json"
 	expectedResult := `ingestion_off_payroll::off-payroll::true::1`
 
-	okResponse, err := ioutil.ReadFile(okJson)
+	okResponse, err := ioutil.ReadFile(okRaw)
 	if err != nil {
-		fmt.Printf("Cannot read testdata path[%s]\n", okJson)
+		fmt.Printf("Cannot read testdata path[%s]\n", okRaw)
 		t.FailNow()
 	}
 
@@ -115,12 +116,7 @@ func TestIngestionResult(t *testing.T) {
 }
 
 func TestIngestionStoresArticles(t *testing.T) {
-	okRaw := "testdata/ingestion-raw-success.json"
-	okArticles := "testdata/ingestion-success.json"
-	key := "api-key"
-	subject := "off-payroll"
-	dataEndpoint := "http://www.provider.com/api/v1/search?key=_KEY_&query=_SUBJECT_%20AND%20sourceCountry:%22United%20Kingdom%22&limit=100&format=json"
-	expectedUrl := "http://www.provider.com/api/v1/search?key=api-key&query=off-payroll%20AND%20sourceCountry:%22United%20Kingdom%22&limit=100&format=json"
+	expectedArticles := "testdata/ingestion-success.json"
 
 	okResponse, err := ioutil.ReadFile(okRaw)
 	if err != nil {
@@ -162,5 +158,5 @@ func TestIngestionStoresArticles(t *testing.T) {
 	}
 
 	actualFilename := fmt.Sprintf(`%s.json`, filepath.Join(path, data.ID))
-	assertFiles(t, okArticles, actualFilename)
+	assertFiles(t, expectedArticles, actualFilename)
 }
