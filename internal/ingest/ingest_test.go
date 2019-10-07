@@ -30,7 +30,24 @@ func newTestingHTTPClient(handler http.Handler) (*http.Client, func()) {
 	return client, s.Close
 }
 
-func assertBytesEqual(tb testing.TB, expected []byte, actual []byte, msg string, v ...interface{}) {
+func assertFiles(tb testing.TB, expectedFile, actualFile string) {
+	eContent, err := ioutil.ReadFile(expectedFile)
+	if err != nil {
+		fmt.Printf("Cannot read expected data from file in path[%s]\n", expectedFile)
+		tb.FailNow()
+	}
+
+	aContent, err := ioutil.ReadFile(actualFile)
+	if err != nil {
+		fmt.Printf("Cannot read actual data from file in path[%s]\n", actualFile)
+		tb.FailNow()
+	}
+
+	msg := fmt.Sprintf("Expected content equals [%s] \n but got [%s]\n", string(eContent), string(aContent))
+	assertBytes(tb, eContent, aContent, msg)
+}
+
+func assertBytes(tb testing.TB, expected []byte, actual []byte, msg string, v ...interface{}) {
 	e := strings.Split(string(expected), "")
 	a := strings.Split(string(actual), "")
 
@@ -132,7 +149,7 @@ func TestIngestionStoresArticles(t *testing.T) {
 	}
 	defer os.RemoveAll(path)
 
-	actual, err := ingest.New().
+	data, err := ingest.New().
 		HTTPClient(httpClient).
 		Key(key).
 		Subject(subject).
@@ -144,19 +161,6 @@ func TestIngestionStoresArticles(t *testing.T) {
 		t.Fatalf("Did not expect error [%s]", err)
 	}
 
-	expectedArticles, err := ioutil.ReadFile(okArticles)
-	if err != nil {
-		fmt.Printf("Cannot read testdata path[%s]\n", okArticles)
-		t.FailNow()
-	}
-
-	filename := fmt.Sprintf(`%s.json`, filepath.Join(path, actual.ID))
-	actualArticles, err := ioutil.ReadFile(filename)
-	if err != nil {
-		fmt.Printf("Expected missing ingested articles at temp path[%s]\n", filename)
-		t.FailNow()
-	}
-
-	msg := fmt.Sprintf("Expected ingested articles equals [%s] \n but got [%s]\n", string(expectedArticles), string(actualArticles))
-	assertBytesEqual(t, expectedArticles, actualArticles, msg)
+	actualFilename := fmt.Sprintf(`%s.json`, filepath.Join(path, data.ID))
+	assertFiles(t, okArticles, actualFilename)
 }
