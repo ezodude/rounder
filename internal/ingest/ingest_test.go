@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ezodude/rounder/pkg/ingest"
+	"github.com/ezodude/rounder/internal/ingest"
 )
 
 func newTestingHTTPClient(handler http.Handler) (*http.Client, func()) {

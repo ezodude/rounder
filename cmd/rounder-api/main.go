@@ -12,7 +12,7 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/ezodude/rounder/pkg/ingest"
+	"github.com/ezodude/rounder/internal/ingest"
 	"github.com/gorilla/mux"
 )
 
@@ -22,10 +22,10 @@ const (
 
 // App struct inits and runs the application
 type App struct {
-	Router      *mux.Router
-	HTTPClient  *http.Client
-	IngestDir   string
-	ProviderKey string
+	Router       *mux.Router
+	HTTPClient   *http.Client
+	IngestDir    string
+	ProviderKey  string
 	DataEndpoint string
 }
 
