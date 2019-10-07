@@ -4,7 +4,7 @@ Rounder is a POC API for sentiment and topic summaries of a specified subject.
 
 Data for a subject is ingested from multiple data (typically news) providers.
 
-But as a proof concept, __for now Rounder is hardcoded for one provider.__ This will change soon.
+But as a proof concept, __for now Rounder is hardcoded internally for one provider.__ This will change soon.
 
 ## How it works
 
