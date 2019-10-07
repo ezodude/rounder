@@ -27,8 +27,8 @@ var expectedUrl = `http://www.provider.com/api/v1/search?key=api-key&query=off-p
 func TestIngestionResult(t *testing.T) {
 	expectedResult := `ingestion_off_payroll::off-payroll::true::1`
 
-	httpClient, teardown := newServedHTTPClientWithChecks(t, okRaw, "GET", expectedUrl)
-	defer teardown()
+	httpClient, srvrteardown := newClientWithServerChecks(t, okRaw, "GET", expectedUrl)
+	defer srvrteardown()
 
 	dir, remove := mustCreateTempDir(t, "", "rounder-ingest")
 	defer remove()
@@ -53,8 +53,8 @@ func TestIngestionResult(t *testing.T) {
 func TestIngestionStoresArticles(t *testing.T) {
 	expectedArticles := "testdata/ingestion-success.json"
 
-	httpClient, teardown := newServedHTTPClientWithChecks(t, okRaw, "GET", expectedUrl)
-	defer teardown()
+	httpClient, srvrteardown := newClientWithServerChecks(t, okRaw, "GET", expectedUrl)
+	defer srvrteardown()
 
 	dir, remove := mustCreateTempDir(t, "", "rounder-ingest")
 	defer remove()
@@ -75,7 +75,7 @@ func TestIngestionStoresArticles(t *testing.T) {
 	assertFiles(t, expectedArticles, actualFilename)
 }
 
-func newServedHTTPClientWithChecks(tb testing.TB, fname, method, url string, v ...interface{}) (*http.Client, func()) {
+func newClientWithServerChecks(tb testing.TB, fname, method, url string, v ...interface{}) (*http.Client, func()) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write(mustReadFile(tb, fname))
 
